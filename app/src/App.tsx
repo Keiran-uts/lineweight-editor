@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./app.css";
 import {
   CATEGORIES,
   WEIGHT_OPTIONS,
   defaultWeights,
 } from "../shared/categories.js";
+import { api, REMOTE_BRIDGE } from "./api";
 
 type PickedFile = { path: string; name: string; dir: string; ext: string };
 type CategoryKey = "walls" | "interiors" | "entourage";
@@ -100,10 +101,31 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Liveness of the local bridge. Polled on mount and after failures so a
+  // hosted UI can tell the user when the bridge isn't running.
+  const [bridge, setBridge] = useState<"checking" | "online" | "offline">(
+    "checking"
+  );
+
+  async function checkBridge() {
+    setBridge("checking");
+    try {
+      const res = await fetch(api("/api/health"), { cache: "no-store" });
+      setBridge(res.ok ? "online" : "offline");
+    } catch {
+      setBridge("offline");
+    }
+  }
+
+  useEffect(() => {
+    checkBridge();
+  }, []);
+
   const busy = ["planning", "opening", "detecting", "applying", "saving"].includes(
     phase
   );
-  const canPlan = !!file && file.ext === ".ai" && !busy && !picking;
+  const canPlan =
+    !!file && file.ext === ".ai" && !busy && !picking && bridge !== "offline";
 
   function resetRun() {
     setPhase("idle");
@@ -125,7 +147,7 @@ export default function App() {
     setPicking(true);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/pick-file");
+      const res = await fetch(api("/api/pick-file"));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Bridge returned ${res.status}`);
       if (!data.cancelled) {
@@ -162,7 +184,7 @@ export default function App() {
     resetRun();
     setPhase("planning");
     try {
-      const res = await fetch("/api/plan", {
+      const res = await fetch(api("/api/plan"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filePath: file.path }),
@@ -178,7 +200,7 @@ export default function App() {
     if (!file || !plan) return;
     setPhase("applying");
     try {
-      const res = await fetch("/api/apply", {
+      const res = await fetch(api("/api/apply"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filePath: file.path, plan, weights }),
@@ -199,7 +221,7 @@ export default function App() {
 
   async function revealOutput() {
     if (!outputPath) return;
-    await fetch("/api/reveal", {
+    await fetch(api("/api/reveal"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: outputPath }),
@@ -217,11 +239,14 @@ export default function App() {
       </header>
 
       <section className="card">
+        {/* Bridge connection status */}
+        <BridgeStatus state={bridge} onRetry={checkBridge} />
+
         {/* Add file */}
         <button
           className={`dropzone ${file ? "dropzone-filled" : ""}`}
           onClick={handleAddFile}
-          disabled={picking || busy}
+          disabled={picking || busy || bridge === "offline"}
         >
           {picking ? (
             <span className="dz-text">Waiting for file picker…</span>
@@ -333,6 +358,49 @@ export default function App() {
         />
       </section>
     </main>
+  );
+}
+
+function BridgeStatus({
+  state,
+  onRetry,
+}: {
+  state: "checking" | "online" | "offline";
+  onRetry: () => void;
+}) {
+  if (state === "checking") {
+    return (
+      <div className="bridge bridge-checking">
+        <span className="bridge-dot" /> Connecting to local bridge…
+      </div>
+    );
+  }
+  if (state === "online") {
+    return (
+      <div className="bridge bridge-online">
+        <span className="bridge-dot" /> Connected to local bridge
+      </div>
+    );
+  }
+  return (
+    <div className="bridge bridge-offline">
+      <div>
+        <strong>Local bridge not running.</strong> This hosted UI drives Adobe
+        Illustrator through a small bridge on your own machine.
+        {REMOTE_BRIDGE ? (
+          <>
+            {" "}
+            Start it: <code>npm run bridge</code> in the project, with Illustrator
+            and its MCP server open.
+          </>
+        ) : (
+          <> Start the app with <code>npm start</code>.</>
+        )}
+      </div>
+      <button className="btn-ghost" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
   );
 }
 

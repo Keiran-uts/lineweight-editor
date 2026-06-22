@@ -8,6 +8,7 @@
     "dev": "concurrently -n web,bridge -c blue,magenta \"npm:dev:web\" \"npm:dev:bridge\"",
     "dev:web": "vite",
     "dev:bridge": "node server/bridge.mjs",
+    "bridge": "node scripts/preflight.mjs && node server/bridge.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

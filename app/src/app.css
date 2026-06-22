@@ -95,6 +95,50 @@
   color: var(--c-magenta);
 }
 
+/* ── Bridge connection status ── */
+.bridge {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  font-size: 14px;
+  border-radius: var(--r-sm);
+  padding: var(--s-sm) var(--s-md);
+}
+.bridge-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--r-full);
+  flex: none;
+}
+.bridge-checking {
+  color: var(--c-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+.bridge-checking .bridge-dot {
+  background: var(--c-muted);
+}
+.bridge-online {
+  color: var(--c-green);
+  background: rgba(53, 237, 126, 0.08);
+}
+.bridge-online .bridge-dot {
+  background: var(--c-green);
+}
+.bridge-offline {
+  color: #ffcf4d;
+  background: rgba(255, 207, 77, 0.1);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-md);
+  line-height: 1.45;
+}
+.bridge-offline code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
 /* ── Paste-a-path fallback ── */
 .manual-row {
   display: flex;

@@ -45,6 +45,31 @@ This starts the Vite UI on **http://localhost:5173** and the local bridge on
 > opens a native OS dialog that a headless browser can't complete and will leave
 > blocking.
 
+## Hosting the UI (e.g. Vercel) + local bridge
+
+The editing engine must run on the machine that has Illustrator, so the tool
+can't be *fully* hosted. But you can host the **UI** and have it talk to a
+**bridge running locally** on the user's machine:
+
+1. **Deploy the UI to Vercel**
+   - Import the GitHub repo. In **Project → Settings → General**, set
+     **Root Directory = `app`** (the Vite app lives in a subfolder).
+   - Framework preset auto-detects as **Vite** (`vercel.json` pins it too).
+   - Add an **Environment Variable**: `VITE_API_BASE = http://localhost:8787`.
+   - Deploy.
+2. **Run the bridge locally** on the machine with Illustrator:
+   ```
+   npm run bridge      # preflights the MCP, then serves :8787
+   ```
+   with Adobe Illustrator + its MCP server open.
+3. Open your Vercel URL. The page reaches the local bridge at
+   `http://localhost:8787` (browsers allow HTTPS→`http://localhost`, and the
+   bridge sends permissive CORS). The header shows a **Connected to local
+   bridge** indicator; if the bridge isn't running it tells you how to start it.
+
+Leaving `VITE_API_BASE` unset (the default) keeps `/api` relative for plain
+local use via `npm start`.
+
 ## How detection works
 
 1. **By layer name (preferred).** Layers named `Walls`, `Interiors`,
