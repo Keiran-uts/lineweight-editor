@@ -2,26 +2,15 @@
 // line either way and always exits 0 — a down MCP shouldn't block the UI from
 // starting (the user may open Illustrator after launching).
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { getIllustratorConfig } from "../server/config.mjs";
 
-function readConfig() {
-  try {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(os.homedir(), ".claude.json"), "utf8")
-    );
-    return cfg?.mcpServers?.illustrator ?? null;
-  } catch {
-    return null;
-  }
-}
-
-const ill = readConfig();
-if (!ill?.url) {
+let ill;
+try {
+  ill = getIllustratorConfig();
+} catch {
   console.log(
-    "⚠  Illustrator MCP not found in ~/.claude.json. Register it with " +
-      "`claude mcp add` before running edits."
+    "⚠  Illustrator MCP config not found. Set ILLUSTRATOR_MCP_URL and " +
+      "ILLUSTRATOR_MCP_TOKEN in app/.env, or register it with `claude mcp add`."
   );
   process.exit(0);
 }
@@ -32,7 +21,7 @@ try {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json, text/event-stream",
-      Authorization: ill.headers?.Authorization ?? "",
+      Authorization: ill.authorization ?? "",
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -47,7 +36,7 @@ try {
     signal: AbortSignal.timeout(5000),
   });
   if (res.ok) {
-    console.log(`✓  Illustrator MCP reachable at ${ill.url}`);
+    console.log(`✓  Illustrator MCP reachable at ${ill.url} (from ${ill.source})`);
   } else if (res.status === 401 || res.status === 403) {
     console.log(
       "⚠  Illustrator MCP token rejected — re-run `claude mcp add` with the " +

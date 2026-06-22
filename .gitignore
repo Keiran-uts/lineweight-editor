@@ -4,6 +4,11 @@ node_modules/
 # Build output
 dist/
 
+# Secrets / local env (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+
 # Local/editor cruft
 *.local
 .DS_Store

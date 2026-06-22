@@ -1,37 +1,18 @@
 // Minimal MCP (Streamable HTTP) client for the Adobe Illustrator MCP server.
 //
-// The server config (URL + bearer token) is read from the user's Claude config
-// (~/.claude.json → mcpServers.illustrator) so the bridge always uses whatever
-// the user registered with `claude mcp add` — the token rotates when the MCP
-// server restarts, and this keeps us in sync.
+// Credentials come from getIllustratorConfig() (config.mjs): a local .env file
+// first, else ~/.claude.json. Re-read on each connect so a rotated token is
+// picked up without restarting the bridge.
 //
 // Protocol (verified against the server): POST `initialize` → capture the
 // `Mcp-Session-Id` response header → POST `notifications/initialized` → then
 // `tools/call`. Tool output arrives as JSON in result.content[0].text.
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-
-function readIllustratorConfig() {
-  const cfgPath = path.join(os.homedir(), ".claude.json");
-  const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-  const ill = cfg?.mcpServers?.illustrator;
-  if (!ill?.url) {
-    throw new Error(
-      "Illustrator MCP not found in ~/.claude.json (mcpServers.illustrator). " +
-        "Register it with `claude mcp add` first."
-    );
-  }
-  return {
-    url: ill.url,
-    authorization: ill.headers?.Authorization ?? "",
-  };
-}
+import { getIllustratorConfig } from "./config.mjs";
 
 export class IllustratorMcp {
   constructor() {
-    this.config = readIllustratorConfig();
+    this.config = getIllustratorConfig();
     this.sessionId = null;
     this.nextId = 1;
   }
@@ -67,7 +48,7 @@ export class IllustratorMcp {
   async connect() {
     // Re-read config each connect so a rotated token (MCP server restarted) is
     // picked up without restarting the bridge.
-    this.config = readIllustratorConfig();
+    this.config = getIllustratorConfig();
     this.sessionId = null;
 
     let initRes;

@@ -20,6 +20,17 @@ the source is never modified.
   bridge picks up the new token automatically.
 - **Node 18+** (developed on Node 24).
 
+### Credentials (`.env`)
+
+The bridge reads the Illustrator MCP URL + token from a local **`.env`** file
+first, falling back to `~/.claude.json`. To use `.env`, copy the example and
+fill it in (it's gitignored, so it never gets committed):
+
+```
+cp app/.env.example app/.env
+# then set ILLUSTRATOR_MCP_URL and ILLUSTRATOR_MCP_TOKEN
+```
+
 ## Run
 
 ```
