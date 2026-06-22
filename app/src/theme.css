@@ -1,0 +1,68 @@
+/* Discord design tokens — sourced from DESIGN-discord.md */
+:root {
+  /* Brand & accent */
+  --c-primary: #5865f2;       /* Blurple */
+  --c-on-primary: #ffffff;
+  --c-green: #35ed7e;
+  --c-magenta: #ec48bd;
+  --c-link: #00b0f4;
+
+  /* Surfaces */
+  --c-canvas: #0a0d3a;        /* deep-indigo page base */
+  --c-surface-indigo: #1e2353;
+  --c-surface-onyx: #23272a;
+  --c-surface-black: #000000;
+
+  /* Text */
+  --c-ink: #ffffff;
+  --c-ink-dark: #000000;
+  --c-muted: #9aa0c4;
+  --c-hairline: #23272a;
+
+  /* Radius */
+  --r-xs: 6px;
+  --r-sm: 12px;
+  --r-md: 14px;
+  --r-lg: 16px;
+  --r-xl: 40px;
+  --r-pill: 50px;
+  --r-full: 9999px;
+
+  /* Spacing (8px base) */
+  --s-xxs: 4px;
+  --s-xs: 8px;
+  --s-sm: 12px;
+  --s-md: 16px;
+  --s-lg: 20px;
+  --s-xl: 24px;
+  --s-xxl: 32px;
+  --s-section: 40px;
+
+  /* Type — open-source substitutes per the design doc:
+     heavy grotesque for display, Inter for body/UI. */
+  --font-display: "Space Grotesk", "Hanken Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--c-ink);
+  /* Indigo canvas lit by a Blurple→magenta gradient mesh, never flat. */
+  background-color: var(--c-canvas);
+  background-image:
+    radial-gradient(60% 50% at 20% 10%, rgba(88, 101, 242, 0.45), transparent 60%),
+    radial-gradient(50% 45% at 85% 20%, rgba(236, 72, 189, 0.35), transparent 60%),
+    radial-gradient(70% 60% at 50% 110%, rgba(88, 101, 242, 0.3), transparent 60%);
+  background-attachment: fixed;
+}

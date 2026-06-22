@@ -1,0 +1,28 @@
+{
+  "name": "lineweight-editor",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/preflight.mjs && concurrently -n web,bridge -c blue,magenta \"vite --open\" \"node server/bridge.mjs\"",
+    "dev": "concurrently -n web,bridge -c blue,magenta \"npm:dev:web\" \"npm:dev:bridge\"",
+    "dev:web": "vite",
+    "dev:bridge": "node server/bridge.mjs",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}
