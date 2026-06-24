@@ -18,6 +18,16 @@ import { planReweight, applyReweight } from "./reweight.mjs";
 const PORT = process.env.BRIDGE_PORT ? Number(process.env.BRIDGE_PORT) : 8787;
 
 const app = express();
+
+// Chrome's Private Network Access: a public HTTPS page (e.g. a Vercel URL)
+// calling this localhost bridge triggers a preflight that must be answered with
+// this header, or the request is blocked. Set it before cors() handles OPTIONS.
+app.use((req, res, next) => {
+  if (req.headers["access-control-request-private-network"]) {
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
+  }
+  next();
+});
 app.use(cors());
 app.use(express.json());
 
