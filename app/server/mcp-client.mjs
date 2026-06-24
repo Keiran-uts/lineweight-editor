@@ -8,7 +8,7 @@
 // `Mcp-Session-Id` response header → POST `notifications/initialized` → then
 // `tools/call`. Tool output arrives as JSON in result.content[0].text.
 
-import { getIllustratorConfig } from "./config.mjs";
+import { getIllustratorConfig, getIllustratorConfigs } from "./config.mjs";
 
 export class IllustratorMcp {
   constructor() {
@@ -46,55 +46,72 @@ export class IllustratorMcp {
   }
 
   async connect() {
-    // Re-read config each connect so a rotated token (MCP server restarted) is
-    // picked up without restarting the bridge.
-    this.config = getIllustratorConfig();
-    this.sessionId = null;
+    // Re-read candidates each connect (rotated tokens are picked up without
+    // restarting the bridge). Try each in order; a token rejected by one source
+    // self-heals from the next (.env → ~/.claude.json).
+    const candidates = getIllustratorConfigs();
+    let unreachable = false;
+    let rejected = null;
 
-    let initRes;
-    try {
-      initRes = await fetch(this.config.url, {
+    for (const cfg of candidates) {
+      this.config = cfg;
+      this.sessionId = null;
+
+      let initRes;
+      try {
+        initRes = await fetch(cfg.url, {
+          method: "POST",
+          headers: this.#headers,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: this.nextId++,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-03-26",
+              capabilities: {},
+              clientInfo: { name: "lineweight-bridge", version: "0.1.0" },
+            },
+          }),
+        });
+      } catch {
+        unreachable = true;
+        continue; // network error — same host for all candidates, but keep going
+      }
+
+      if (initRes.status === 401 || initRes.status === 403) {
+        rejected = cfg.source; // stale token — try the next source
+        continue;
+      }
+      if (!initRes.ok) {
+        rejected = `HTTP ${initRes.status} (${cfg.source})`;
+        continue;
+      }
+
+      // Success — finish the handshake with this credential.
+      this.sessionId = initRes.headers.get("mcp-session-id");
+      await this.#parse(initRes);
+      await fetch(cfg.url, {
         method: "POST",
         headers: this.#headers,
         body: JSON.stringify({
           jsonrpc: "2.0",
-          id: this.nextId++,
-          method: "initialize",
-          params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "lineweight-bridge", version: "0.1.0" },
-          },
+          method: "notifications/initialized",
         }),
       });
-    } catch {
+      return this;
+    }
+
+    if (unreachable) {
       throw new Error(
         "Couldn't reach Adobe Illustrator. Make sure Illustrator is open and " +
           "its MCP server is running, then try again."
       );
     }
-    if (initRes.status === 401 || initRes.status === 403) {
-      throw new Error(
-        "Illustrator MCP rejected the access token. Re-run `claude mcp add` " +
-          "with the current token (it changes when the MCP server restarts)."
-      );
-    }
-    if (!initRes.ok) {
-      throw new Error(`MCP initialize failed: HTTP ${initRes.status}`);
-    }
-    this.sessionId = initRes.headers.get("mcp-session-id");
-    await this.#parse(initRes);
-
-    // Acknowledge initialization (server replies 202, no body).
-    await fetch(this.config.url, {
-      method: "POST",
-      headers: this.#headers,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-      }),
-    });
-    return this;
+    throw new Error(
+      `Illustrator MCP rejected every saved token (${rejected ?? "unknown"}). ` +
+        "Refresh it: re-run `claude mcp add` with the current token, or update " +
+        "ILLUSTRATOR_MCP_TOKEN in app/.env (it changes when the MCP restarts)."
+    );
   }
 
   /**

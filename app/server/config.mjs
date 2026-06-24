@@ -25,40 +25,64 @@ try {
 }
 
 /**
- * @returns {{ url: string, authorization: string, source: string }}
+ * All credential candidates, in priority order: `.env` first, then
+ * ~/.claude.json. Deduped by url+authorization. The client tries each in turn
+ * so a stale token in one source self-heals from the other (e.g. `.env` token
+ * went stale but `claude mcp add` refreshed ~/.claude.json).
+ * @returns {{ url: string, authorization: string, source: string }[]}
  */
-export function getIllustratorConfig() {
+export function getIllustratorConfigs() {
+  const candidates = [];
+
+  // 1. .env
   const url = process.env.ILLUSTRATOR_MCP_URL;
   const token = process.env.ILLUSTRATOR_MCP_TOKEN;
   const auth = process.env.ILLUSTRATOR_MCP_AUTH;
   if (url && (auth || token)) {
-    return {
+    candidates.push({
       url,
       authorization: auth || `Bearer ${token}`,
       source: ".env",
-    };
+    });
   }
 
-  // Fall back to ~/.claude.json
+  // 2. ~/.claude.json
   try {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(os.homedir(), ".claude.json"), "utf8")
     );
     const ill = cfg?.mcpServers?.illustrator;
     if (ill?.url) {
-      return {
+      candidates.push({
         url: ill.url,
         authorization: ill.headers?.Authorization ?? "",
         source: "~/.claude.json",
-      };
+      });
     }
   } catch {
-    /* fall through to the error below */
+    /* ignore */
   }
 
-  throw new Error(
-    "Illustrator MCP config not found. Set ILLUSTRATOR_MCP_URL and " +
-      "ILLUSTRATOR_MCP_TOKEN in app/.env (copy app/.env.example), or register " +
-      "the server with `claude mcp add`."
-  );
+  // Dedupe identical url+token pairs (common: .env and ~/.claude.json match).
+  const seen = new Set();
+  const unique = candidates.filter((c) => {
+    const key = `${c.url}|${c.authorization}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) {
+    throw new Error(
+      "Illustrator MCP config not found. Set ILLUSTRATOR_MCP_URL and " +
+        "ILLUSTRATOR_MCP_TOKEN in app/.env (copy app/.env.example), or register " +
+        "the server with `claude mcp add`."
+    );
+  }
+  return unique;
+}
+
+/** The highest-priority candidate (used by the preflight check). */
+export function getIllustratorConfig() {
+  return getIllustratorConfigs()[0];
 }
